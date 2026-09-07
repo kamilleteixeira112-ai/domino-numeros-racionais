@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#6d5dfc" />
+  <meta name="description" content="Jogo educativo de dominó para praticar equivalência entre frações e números decimais." />
+  <title>Dominó dos Números Racionais</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-row">
+        <span class="brand-icon" aria-hidden="true">🎲</span>
+        <div>
+          <h1>Dominó dos Números Racionais</h1>
+          <p>2 jogadores • Fração ↔ número decimal • Profa. Kamille Teixeira</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section id="setup-screen" class="card setup-card" aria-labelledby="setup-title">
+      <h2 id="setup-title">👥 Criar ou entrar em uma sala</h2>
+      <p class="lead">Um jogador cria a sala e envia o código para o colega.</p>
+
+      <div id="configuration-warning" class="alert alert-warning hidden" role="status">
+        <strong>Configuração pendente:</strong> o Firebase ainda não foi conectado a este projeto.
+        O jogo pode ser testado neste aparelho em modo demonstração, mas as salas online só funcionarão após a configuração do Firebase.
+      </div>
+
+      <div class="setup-actions">
+        <button id="create-room-btn" class="btn btn-primary" type="button">➕ Criar sala</button>
+        <div class="join-group">
+          <label class="sr-only" for="room-code-input">Código da sala</label>
+          <input id="room-code-input" maxlength="6" inputmode="text" autocomplete="off" placeholder="Código da sala" aria-label="Código da sala" />
+          <button id="join-room-btn" class="btn btn-secondary" type="button">🚪 Entrar</button>
+        </div>
+      </div>
+
+      <button id="demo-mode-btn" class="btn btn-ghost hidden" type="button">🧪 Testar em modo demonstração local</button>
+      <p class="microcopy">As salas online usam sincronização pelo Firebase Realtime Database, evitando dependência de conexão direta entre os navegadores.</p>
+    </section>
+
+    <section id="game-screen" class="card game-card hidden" aria-live="polite">
+      <div class="room-bar">
+        <div class="room-code-wrap">
+          <span class="room-label">Sala:</span>
+          <strong id="room-code-display" class="room-code">------</strong>
+          <button id="copy-code-btn" class="icon-button" type="button" title="Copiar código da sala" aria-label="Copiar código da sala">📋</button>
+        </div>
+        <button id="leave-room-btn" class="btn btn-small btn-secondary" type="button">Sair</button>
+      </div>
+
+      <div class="players-grid">
+        <div class="player-card">
+          <div class="presence-dot" id="p1-presence"></div>
+          <div><strong id="p1-name">Jogador 1</strong><span id="p1-you" class="you-tag"></span></div>
+        </div>
+        <div class="player-card">
+          <div class="presence-dot" id="p2-presence"></div>
+          <div><strong id="p2-name">Jogador 2</strong><span id="p2-you" class="you-tag"></span></div>
+        </div>
+      </div>
+
+      <div id="status-banner" class="status-banner">Aguardando...</div>
+
+      <div class="stats-grid">
+        <div class="stat"><strong id="score-p1">14</strong><span>Peças do Jogador 1</span></div>
+        <div class="stat"><strong id="score-p2">14</strong><span>Peças do Jogador 2</span></div>
+        <div class="stat"><strong id="table-count">0/28</strong><span>Peças na mesa</span></div>
+        <div class="stat"><strong id="turn-label">—</strong><span>Vez</span></div>
+      </div>
+
+      <div class="toolbar">
+        <button id="hint-btn" class="btn btn-secondary" type="button">💡 Dica</button>
+        <button id="rules-btn" class="btn btn-secondary" type="button">📖 Regras</button>
+        <button id="pass-btn" class="btn btn-warning hidden" type="button">⏭️ Passar a vez</button>
+      </div>
+
+      <section class="table-section" aria-labelledby="table-title">
+        <h3 id="table-title">Mesa</h3>
+        <div id="table-area" class="table-area">
+          <div id="table-empty" class="table-empty">A primeira peça pode ser jogada livremente.</div>
+          <div id="domino-chain" class="domino-chain" aria-label="Peças jogadas"></div>
+        </div>
+        <div class="end-controls">
+          <button id="play-left-btn" class="btn btn-secondary" type="button" disabled>← Jogar à esquerda</button>
+          <button id="play-right-btn" class="btn btn-secondary" type="button" disabled>Jogar à direita →</button>
+        </div>
+      </section>
+
+      <section class="hand-section" aria-labelledby="hand-title">
+        <h3 id="hand-title">Suas peças</h3>
+        <div id="hand-area" class="hand-grid" aria-label="Suas peças"></div>
+        <p class="microcopy">Selecione uma peça e depois uma ponta da mesa. Ex.: 1/2 = 0,5.</p>
+      </section>
+
+      <div id="teacher-note" class="teacher-note hidden"></div>
+    </section>
+  </main>
+
+  <dialog id="message-dialog" class="modal">
+    <form method="dialog">
+      <h2 id="message-title">Mensagem</h2>
+      <div id="message-body" class="modal-body"></div>
+      <div class="modal-actions"><button class="btn btn-primary" value="close">OK</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="rules-dialog" class="modal">
+    <form method="dialog">
+      <h2>📖 Regras</h2>
+      <div class="modal-body">
+        <ol>
+          <li>Cada jogador recebe 14 peças.</li>
+          <li>Na primeira jogada, qualquer peça pode ser colocada.</li>
+          <li>Depois, uma ponta da peça precisa representar o mesmo número racional da ponta da mesa, mesmo que esteja escrita de outra forma.</li>
+          <li>Exemplo: <strong>3/4</strong> combina com <strong>0,75</strong>.</li>
+          <li>Se não houver nenhuma jogada possível, o botão <strong>Passar a vez</strong> será liberado.</li>
+          <li>Vence quem ficar sem peças. Se os dois jogadores ficarem bloqueados, vence quem tiver menos peças; em empate, quem tiver menor soma numérica.</li>
+        </ol>
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" value="close">Entendi</button></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
