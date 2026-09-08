@@ -4,19 +4,18 @@
  * IMPORTANTE:
  * - Estes valores NÃO são senhas. O Firebase os entrega para apps Web e eles podem ficar no front-end.
  * - A segurança real deve ser controlada pelas regras do Realtime Database e pelo Authentication.
- * - Substitua os valores abaixo pelos dados fornecidos em Firebase Console > Project settings > Your apps.
  */
 export const firebaseConfig = {
-  apiKey: "__FIREBASE_API_KEY__",
-  authDomain: "__FIREBASE_AUTH_DOMAIN__",
-  databaseURL: "__FIREBASE_DATABASE_URL__",
-  projectId: "__FIREBASE_PROJECT_ID__",
-  storageBucket: "__FIREBASE_STORAGE_BUCKET__",
-  messagingSenderId: "__FIREBASE_MESSAGING_SENDER_ID__",
-  appId: "__FIREBASE_APP_ID__"
+  apiKey: "AIzaSyBHB50A3Q68ZkZjDLEmq5QfiW7Z2VEMMfE",
+  authDomain: "domino-numeros-racionais.firebaseapp.com",
+  databaseURL: "https://domino-numeros-racionais-default-rtdb.firebaseio.com",
+  projectId: "domino-numeros-racionais",
+  storageBucket: "domino-numeros-racionais.firebasestorage.app",
+  messagingSenderId: "747440354401",
+  appId: "1:747440354401:web:64798303669ed81c6ba620"
 };
 
-/** Retorna true quando os placeholders acima já foram substituídos. */
+/** Retorna true quando todos os valores necessários estão presentes. */
 export function isFirebaseConfigured() {
-  return Object.values(firebaseConfig).every((value) => value && !String(value).startsWith("__FIREBASE_"));
+  return Object.values(firebaseConfig).every((value) => Boolean(value));
 }
