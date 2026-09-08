@@ -6,7 +6,7 @@
  * - A segurança real deve ser controlada pelas regras do Realtime Database e pelo Authentication.
  */
 export const firebaseConfig = {
-  apiKey: "AIzaSyBHB50A3Q68ZkZjDLEmq5QfiW7Z2VEMMfE",
+  apiKey: "AIzaSyBHD50A3Q68ZkZjDLEmq5QfiW7Z2VEMMfE",
   authDomain: "domino-numeros-racionais.firebaseapp.com",
   databaseURL: "https://domino-numeros-racionais-default-rtdb.firebaseio.com",
   projectId: "domino-numeros-racionais",
