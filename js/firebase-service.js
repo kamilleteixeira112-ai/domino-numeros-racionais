@@ -74,22 +74,66 @@ export async function createRoom() {
   throw new Error("Não foi possível gerar uma sala. Tente novamente.");
 }
 
-/** Entra na sala como Jogador 2 e impede um terceiro participante. */
+/**
+ * Entra na sala como Jogador 2 e impede um terceiro participante.
+ *
+ * Fazemos primeiro uma leitura explícita da sala antes da transaction.
+ * O Realtime Database pode chamar a função da transaction inicialmente com
+ * o cache local vazio (null). Se tratarmos esse null como "sala inexistente",
+ * a operação pode ser abortada antes de o SDK consultar o servidor.
+ */
 export async function joinRoom(code) {
   const uid = await initializeFirebase();
   const normalized = code.trim().toUpperCase();
+  const target = roomRef(normalized);
+
+  // Pré-leitura: confirma que a sala existe no servidor e aquece o cache local.
+  const initialSnapshot = await get(target);
+  if (!initialSnapshot.exists()) {
+    throw new Error("Sala não encontrada. Confira o código.");
+  }
+
+  const initialRoom = initialSnapshot.val();
+  if (initialRoom.expiresAt && initialRoom.expiresAt < Date.now()) {
+    throw new Error("Esta sala expirou.");
+  }
+  if (initialRoom.players?.p2?.uid &&
+      initialRoom.players.p1?.uid !== uid &&
+      initialRoom.players.p2?.uid !== uid) {
+    throw new Error("A sala já possui dois jogadores.");
+  }
+
   let failure = null;
-  const result = await runTransaction(roomRef(normalized), (room) => {
-    if (!room) { failure = "Sala não encontrada. Confira o código."; return; }
-    if (room.expiresAt && room.expiresAt < Date.now()) { failure = "Esta sala expirou."; return; }
+  const result = await runTransaction(target, (room) => {
+    if (!room) {
+      failure = "A sala deixou de existir durante a entrada. Tente novamente.";
+      return;
+    }
+    if (room.expiresAt && room.expiresAt < Date.now()) {
+      failure = "Esta sala expirou.";
+      return;
+    }
     if (room.players?.p1?.uid === uid || room.players?.p2?.uid === uid) return room;
-    if (room.players?.p2?.uid) { failure = "A sala já possui dois jogadores."; return; }
-    room.players.p2 = { uid, name: "Jogador 2", connected: true, joinedAt: Date.now() };
+    if (room.players?.p2?.uid) {
+      failure = "A sala já possui dois jogadores.";
+      return;
+    }
+
+    room.players.p2 = {
+      uid,
+      name: "Jogador 2",
+      connected: true,
+      joinedAt: Date.now()
+    };
     room.status = "playing";
     return room;
   });
+
   if (!result.committed) throw new Error(failure || "Não foi possível entrar na sala.");
+
   const room = result.snapshot.val();
+  if (!room) throw new Error("A sala não está mais disponível.");
+
   const role = room.players.p1.uid === uid ? "p1" : "p2";
   await configurePresence(normalized, role);
   return { code: normalized, role, uid };
@@ -115,7 +159,12 @@ export async function markConnected(code, role) {
 /** Executa uma jogada em transaction para impedir conflitos entre cliques simultâneos. */
 export async function playTile(code, role, tileId, side) {
   let failure = null;
-  const result = await runTransaction(roomRef(code), (room) => {
+  const target = roomRef(code);
+
+  // Garante que a transaction comece com o estado atual da sala em cache.
+  await get(target);
+
+  const result = await runTransaction(target, (room) => {
     if (!room || room.status !== "playing") { failure = "A partida não está disponível para jogar."; return; }
     if (room.players?.[role]?.uid !== currentUid) { failure = "Este navegador não corresponde ao jogador da sala."; return; }
     if (room.game.turn !== role) { failure = "Ainda não é a sua vez."; return; }
@@ -147,7 +196,10 @@ export async function playTile(code, role, tileId, side) {
 /** Passa a vez somente se o próprio servidor confirmar que não existe jogada possível. */
 export async function passTurn(code, role) {
   let failure = null;
-  const result = await runTransaction(roomRef(code), (room) => {
+  const target = roomRef(code);
+  await get(target);
+
+  const result = await runTransaction(target, (room) => {
     if (!room || room.status !== "playing") { failure = "A partida não está disponível."; return; }
     if (room.players?.[role]?.uid !== currentUid || room.game.turn !== role) { failure = "Não é possível passar a vez agora."; return; }
     const hand = role === "p1" ? (room.game.hand1 || []) : (room.game.hand2 || []);
@@ -167,7 +219,10 @@ export async function passTurn(code, role) {
 export async function restartGame(code, role) {
   if (role !== "p1") throw new Error("Somente o Jogador 1 pode iniciar uma nova rodada.");
   let failure = null;
-  const result = await runTransaction(roomRef(code), (room) => {
+  const target = roomRef(code);
+  await get(target);
+
+  const result = await runTransaction(target, (room) => {
     if (!room?.players?.p2) { failure = "O segundo jogador ainda não entrou."; return; }
     if (room.players.p1.uid !== currentUid) { failure = "Este navegador não é o criador da sala."; return; }
     room.game = newGameState();
